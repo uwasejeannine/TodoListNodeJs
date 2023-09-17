@@ -6,70 +6,77 @@ const app = express();
 
 app.use(bodyParser.json());
 
-// In-memory storage for todos
+// momory of todos
 let todos = [
-  { id: 1, text: "coding" },
-  { id: 1, text: "coding" },
+  { id: 1, text: "coding", deleted: false, completed: false, date: new Date() },
+  { id: 2, text: "coding", deleted: false, completed: false, date: new Date() },
 ];
-
-app.get("/", (req, res) => {
-  res.status(200).json({ message: "Welcometo to our todo list app" });
-});
 
 // Create a new TODO
 app.post("/todos/post", (req, res) => {
-  const newTodo = req.body;
+  const { text } = req.body;
+  const newTodo = {
+    id: todos.length + 1,
+    text,
+    deleted: false,
+    completed: false,
+    date: new Date(),
+  };
+
   todos.push(newTodo);
-  return res.status(201).json(todos);
+  return res.status(201).json(newTodo);
 });
 
 // List all TODOs
 app.get("/todos", (req, res) => {
-  res.status(200).json(todos);
+  const todo = todos.filter((todo) => todo.deleted === false);
+  return res.status(200).send(todo);
 });
 
-// Update a TODO by ID
+// Update a TODO
 app.put("/todos/:id", (req, res) => {
   const id = parseInt(req.params.id);
-  const { text, done } = req.body;
-
-  if (isNaN(id) || id < 0 || id >= app.locals.todos.length) {
-    return res.status(404).json({ message: "TODO not found" });
+  const todo = todos.find((todo) => todo.id === id);
+  if (!todo) {
+    return res.status(404).send({ message: "The todo doesn't excist" });
   }
+  const updatedtodo = {
+    id: todo.id,
+    text: req.body.text || todo.text,
+  };
+  const findeIndex = todos.findIndex((todo) => todo.id === id);
 
-  if (text !== undefined) {
-    app.locals.todos[id].text = text;
-  }
-
-  if (done !== undefined) {
-    app.locals.todos[id].done = done;
-  }
-
-  res.json(app.locals.todos[id]);
+  todos[findeIndex] = updatedtodo;
+  return res.status(200).send(updatedtodo);
 });
 
 // Delete a TODO by ID
 app.delete("/todos/:id", (req, res) => {
   const id = parseInt(req.params.id);
+  const todoIndex = todos.findIndex((todo) => todo.id === id);
 
-  if (isNaN(id) || id < 0 || id >= app.locals.todos.length) {
-    return res.status(404).json({ message: "TODO not found" });
+  if (todoIndex === -1) {
+    return res.status(404).send({ error: "The todo doen't excist" });
   }
-
-  const deletedTodo = app.locals.todos.splice(id, 1);
-  res.json(deletedTodo[0]);
+  // todos.splice(todoIndex, 1);
+  todos[todoIndex].deleted = true;
+  return res
+    .status(200)
+    .send({ message: "The todo have been sucessfulyy deleted" });
+  console.log(todos[todoIndex]);
 });
 
 // Mark a TODO as done by ID
 app.patch("/todos/:id/done", (req, res) => {
   const id = parseInt(req.params.id);
+  const todoIndex = todos.findIndex((todo) => todo.id === id);
 
-  if (isNaN(id) || id < 0 || id >= app.locals.todos.length) {
-    return res.status(404).json({ message: "TODO not found" });
+  if (todoIndex === -1) {
+    return res.status(404).send({ error: "The todo doen't excist" });
   }
-
-  app.locals.todos[id].done = true;
-  res.json(app.locals.todos[id]);
+  todos[todoIndex].completed = true;
+  return res.status(200).send({ message: "The todo was marked completed" });
+  console.log(todos[todoIndex]);
 });
 
 // Start the server
