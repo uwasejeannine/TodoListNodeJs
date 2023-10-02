@@ -1,81 +1,108 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-require("dotenv").config();
+const express = require('express');
+const bodyParser = require('body-parser');
+require('dotenv').config();
+const { Sequelize } = require('sequelize');
+
+const Todo = require('../models/Todo');
 
 const app = express();
-
 app.use(bodyParser.json());
 
-// In-memory storage for todos
-let todos = [
-  { id: 1, text: "coding" },
-  { id: 1, text: "coding" },
-];
+const sequelize = new Sequelize(
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.DB_HOST,
+    dialect: 'mysql',
+  }
+);
 
-app.get("/", (req, res) => {
-  res.status(200).json({ message: "Welcometo to our todo list app" });
+app.post('/todos/post', async (req, res) => {
+  const { title, description, status } = req.body;
+  try {
+    const newTodo = await Todo.create({
+      title,
+      description,
+      status,
+      deleted: false,
+      completed: false,
+      date: new Date(),
+    });
+    return res.status(201).json(newTodo);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
 });
 
-// Create a new TODO
-app.post("/todos/post", (req, res) => {
-  const newTodo = req.body;
-  todos.push(newTodo);
-  return res.status(201).json(todos);
+app.get('/todos', async (req, res) => {
+  try {
+    const todos = await Todo.findAll({ where: { deleted: false } });
+    return res.status(200).send(todos);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
 });
 
-// List all TODOs
-app.get("/todos", (req, res) => {
-  res.status(200).json(todos);
-});
-
-// Update a TODO by ID
-app.put("/todos/:id", (req, res) => {
+app.put('/todos/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  const { text, done } = req.body;
+  try {
+    const todo = await Todo.findOne({ where: { id } });
 
-  if (isNaN(id) || id < 0 || id >= app.locals.todos.length) {
-    return res.status(404).json({ message: "TODO not found" });
+    if (!todo) {
+      return res.status(404).send({ message: 'The todo doesn\'t exist' });
+    }
+
+    const updatedTodo = await todo.update({
+      title: req.body.title || todo.title,
+      description: req.body.description || todo.description,
+      status: req.body.status || todo.status,
+    });
+
+    return res.status(200).send(updatedTodo);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
-
-  if (text !== undefined) {
-    app.locals.todos[id].text = text;
-  }
-
-  if (done !== undefined) {
-    app.locals.todos[id].done = done;
-  }
-
-  res.json(app.locals.todos[id]);
 });
 
-// Delete a TODO by ID
-app.delete("/todos/:id", (req, res) => {
+app.delete('/todos/:id', async (req, res) => {
   const id = parseInt(req.params.id);
+  try {
+    const todo = await Todo.findOne({ where: { id } });
 
-  if (isNaN(id) || id < 0 || id >= app.locals.todos.length) {
-    return res.status(404).json({ message: "TODO not found" });
+    if (!todo) {
+      return res.status(404).send({ error: 'The todo doesn\'t exist' });
+    }
+
+    await todo.update({ deleted: true });
+
+    return res.status(200).send({ message: 'The todo has been successfully deleted' });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
-
-  const deletedTodo = app.locals.todos.splice(id, 1);
-  res.json(deletedTodo[0]);
 });
 
-// Mark a TODO as done by ID
-app.patch("/todos/:id/done", (req, res) => {
+app.patch('/todos/:id/done', async (req, res) => {
   const id = parseInt(req.params.id);
+  try {
+    const todo = await Todo.findOne({ where: { id } });
 
-  if (isNaN(id) || id < 0 || id >= app.locals.todos.length) {
-    return res.status(404).json({ message: "TODO not found" });
+    if (!todo) {
+      return res.status(404).send({ error: 'The todo doesn\'t exist' });
+    }
+
+    await todo.update({ completed: true });
+
+    return res.status(200).send({ message: 'The todo was marked completed' });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
-
-  app.locals.todos[id].done = true;
-  res.json(app.locals.todos[id]);
 });
 
-// Start the server
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
 
-module.exports = app;
+sequelize.sync().then(() => {
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+});

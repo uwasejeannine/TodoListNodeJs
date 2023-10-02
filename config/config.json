@@ -1,0 +1,24 @@
+{
+  
+    "development": {
+      "username": "TodoManagingSystem",
+      "password": "Managetodos",
+      "database": "todo_db",
+      "host": "localhost",
+      "dialect": "mysql"
+    },
+  "test": {
+    "username": "TodoManagingSystem",
+    "password": "Managetodos",
+    "database": "todo_db",
+    "host": "localhost",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "TodoManagingSystem",
+    "password": "Managetodos",
+    "database": "todo_db",
+    "host": "localhost",
+    "dialect": "mysql"
+  }
+}
